@@ -6,4 +6,3 @@ client.info(function (err, info) {
     sys.puts("Redis Version is: " + info.redis_version);
     client.close();
 });
-
