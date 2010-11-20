@@ -6,7 +6,7 @@ A very simple node.js HTTP proxy providing usage rate limiting using Redis. This
 Usage
 ---
 
-	node http-rate-limiter.js
+	node nodejs-http-rate-limiter.js
 
 Implementation Notes
 ---
