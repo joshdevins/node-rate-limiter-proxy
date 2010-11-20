@@ -26,6 +26,13 @@ function lookupKeyAndProxy(request, response, key) {
     var keyX = "X:" + key;
     var keyY = "Y:" + key;
 
+    // add a callback here already to check if the request has already ended
+    // skipping this seems to have the effect that 'end' event is cleared and thus response/proxy response below hangs forever
+    var requestEnded = false;
+    request.on('end', function() {
+        requestEnded = true;
+    });
+
     // increment X and check TTL on Y
     redisClient.multi()
         .incr(keyX)
@@ -46,7 +53,7 @@ function lookupKeyAndProxy(request, response, key) {
                     .exec();
 
                 sys.log("TTL expired, proxying request for key: " + key);
-                proxy(request, response);
+                proxy(request, response, x, y, requestEnded);
                 return;
             }
 
@@ -56,24 +63,42 @@ function lookupKeyAndProxy(request, response, key) {
                 // rate limit reached
                 sys.log("Usage rate limit hit: " + key);
 
-                response.writeHead(403, {
-                    'X-RateLimit-MaxRequests' : config.maxRequests,
-                    'X-RateLimit-Requests' : x,
-                    'X-RateLimit-TTL' : y });
+                response.writeHead(403, getExtraHeaders(x, y));
                 response.end();
 
                 return;
             }
 
             sys.log("TTL not expired, number of requests under limit, proxying request for key: " + key);
-            proxy(request, response);
+            proxy(request, response, x, y, requestEnded);
         });
+}
+
+/**
+ * Simlple fills in the headers given the current state of the limiter.
+ */
+function getExtraHeaders(x, y) {
+    
+    return {
+        'X-RateLimit-MaxRequests' : config.maxRequests,
+        'X-RateLimit-Requests' : x,
+        'X-RateLimit-TTL' : y };
+}
+
+/**
+ * Merges sets of headers very simply. Might want to get fancy later by doing things like looking at X-Forwarded-For and appending to it.
+ */
+function mergeHeaders(headers1, headers2) {
+
+    for (attrname in headers2) {
+        headers1[attrname] = headers2[attrname];
+    }
 }
 
 /**
  * Proxy the request to the destination service.
  */
-function proxy(request, response) {
+function proxy(request, response, x, y, requestEnded) {
 
     var hostSplit = request.headers.host.split(':');
     var host = hostSplit[0];
@@ -97,7 +122,10 @@ function proxy(request, response) {
         proxy_response.on('end', function() {
             response.end();
         });
-      
+
+        // add extra headers
+        var headers = mergeHeaders(proxy_response.headers, getExtraHeaders(x, y));
+
         response.writeHead(proxy_response.statusCode, proxy_response.headers);
     });
     
@@ -108,8 +136,10 @@ function proxy(request, response) {
     request.on('end', function() {
         proxy_request.end();
     });
-    
-    proxy_request.end();
+
+    if (requestEnded) {
+        proxy_request.end();
+    }
 }
 
 function serverCallback(request, response) {
@@ -121,8 +151,6 @@ function serverCallback(request, response) {
     var key = auth;
 
     lookupKeyAndProxy(request, response, key);
-    
-    sys.log("Done serverCallback");
 }
 
 // create Redis client

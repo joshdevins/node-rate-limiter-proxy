@@ -7,6 +7,26 @@ Usage
 ---
 
 	node nodejs-http-rate-limiter.js
+	
+If you use something like <code>curl</code> to make requests to the proxy, you will see some extra headers that help you understand the current state of the limiter in Redis. The custom headers used are very similar to those in the [Twitter API](http://dev.twitter.com/pages/rate_limiting_faq#checking).
+
+	$ curl -v --header "Host: localhost" http://josh:devins@localhost:8080/
+
+	> GET / HTTP/1.1
+	> Authorization: Basic am9zaDpkZXZpbnM=
+	> User-Agent: curl/7.19.7 (universal-apple-darwin10.0) libcurl/7.19.7 OpenSSL/0.9.8l zlib/1.2.3
+	> Accept: */*
+	> Host: localhost
+	> 
+	< HTTP/1.1 200 OK
+	< date: Sat, 20 Nov 2010 23:35:27 GMT
+	< server: Apache/2.2.15 (Unix) mod_ssl/2.2.15 OpenSSL/0.9.8l DAV/2
+	...
+	< X-RateLimit-MaxRequests: 10
+	< X-RateLimit-Requests: 3
+	< X-RateLimit-TTL: -1
+
+You will also need to explicitly set the <code>Host</code> header when testing against localhost otherwise you will get into an endless loop. This is because the proxy thinks you want to get to "localhost:8080" as your final destination and will try to proxy to that host:port.
 
 Implementation Notes
 ---
