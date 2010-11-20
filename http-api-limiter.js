@@ -5,6 +5,7 @@
  * TODO:
  *  - test HTTPS support
  *  - support setting the proxied request remote address to the same as the originating remote address (avoids need for X-Forwarded-For header)
+ *  - add debug/metadata in response on remaining call quotas
  *
  * Sources: https://github.com/pkrumins/nodejs-proxy (proxying code)
  *
@@ -27,6 +28,17 @@ var config = {
 function lookupKeyAndProxy(request, response, key) {
 
     sys.log("API usage lookup by key: " + key);
+
+    if (false) {
+
+        // rate limit reached
+        sys.log("API limit reached for key: " + key);
+        
+        response.writeHead(403, { 'X-ApiLimit' : '' });
+        response.end();
+        
+        return;
+    }
 
     sys.log("Proxying request for key: " + key);
     proxy(request, response);
