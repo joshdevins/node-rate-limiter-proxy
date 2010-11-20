@@ -1,6 +1,6 @@
 /**
- * A very simple node.js HTTP proxy providing API usage control using Redis. For now, this is intended
- * to be forked to change the configuration and what parts of the HTTP request are used as API keys.
+ * A very simple node.js HTTP proxy providing usage rate limiting using Redis. For now, this is intended
+ * to be forked to change the configuration and what parts of the HTTP request are used as the Redis key.
  *
  * TODO:
  *  - test HTTPS support
@@ -22,19 +22,19 @@ var config = {
 };
 
 /**
- * Provided a key, lookup in Redis what the API usage is and pass through if under limit. If over or at limit,
+ * Provided a key, lookup in Redis what the usage rate is and pass through if under limit. If over or at limit,
  * return an error code to the user.
  */
 function lookupKeyAndProxy(request, response, key) {
 
-    sys.log("API usage lookup by key: " + key);
+    sys.log("Usage rate lookup: " + key);
 
     if (false) {
 
         // rate limit reached
-        sys.log("API limit reached for key: " + key);
+        sys.log("Usage rate limit hit: " + key);
         
-        response.writeHead(403, { 'X-ApiLimit' : '' });
+        response.writeHead(403, { 'X-RateLimit-Hit' : '' });
         response.end();
         
         return;
@@ -98,5 +98,5 @@ function serverCallback(request, response) {
 }
 
 // startup server
-sys.log("Starting HTTP API limiter proxy server on port: " + config.proxy_port);
+sys.log("Starting HTTP usage rate limiter proxy server on port: " + config.proxy_port);
 http.createServer(serverCallback).listen(config.proxy_port);
