@@ -1,13 +1,5 @@
 /**
- * A very simple node.js HTTP proxy providing usage rate limiting using Redis. For now, this is intended
- * to be forked to change the configuration and what parts of the HTTP request are used as the Redis key.
- *
- * TODO:
- *  - test HTTPS support
- *  - support setting the proxied request remote address to the same as the originating remote address (avoids need for X-Forwarded-For header)
- *  - add debug/metadata in response on remaining call quotas
- *
- * Sources: https://github.com/pkrumins/nodejs-proxy (proxying code)
+ * A very simple node.js HTTP proxy providing usage rate limiting using Redis.
  *
  * Author: Josh Devins (info@joshdevins.net, http://joshdevins.net)
  */
@@ -15,7 +7,7 @@
 var sys = require("sys"),
     http = require("http"),
     url = require("url");
-var redis = require("./lib/redis-client.js");
+var redis = require("./lib/node_redis.js");
 
 var config = {
     proxy_port: 8080
@@ -28,6 +20,9 @@ var config = {
 function lookupKeyAndProxy(request, response, key) {
 
     sys.log("Usage rate lookup: " + key);
+
+    // lookup in Redis by key
+    
 
     if (false) {
 
@@ -96,6 +91,12 @@ function serverCallback(request, response) {
 
     lookupKeyAndProxy(request, response, key);
 }
+
+// create Redis client
+var redisClient = redis.createClient(6379, 'localhost');
+redisClient.on("error", function (err) {
+    sys.log("Redis connection error to " + client.host + ":" + client.port + " - " + err);
+});
 
 // startup server
 sys.log("Starting HTTP usage rate limiter proxy server on port: " + config.proxy_port);
