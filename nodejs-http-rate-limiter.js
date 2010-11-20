@@ -10,7 +10,9 @@ var sys = require("sys"),
 var redis = require("./lib/node_redis.js");
 
 var config = {
-    proxy_port: 8080
+    proxy_port: 8080,
+    maxRequests: 10,
+    periodInSeconds: 60
 };
 
 /**
@@ -20,22 +22,57 @@ var config = {
 function lookupKeyAndProxy(request, response, key) {
 
     sys.log("Usage rate lookup: " + key);
-
-    // lookup in Redis by key
     
+    var keyX = "X:" + key;
+    var keyY = "Y:" + key;
+    
+    var x = 0;
+    var y = -1;
 
-    if (false) {
+    // increment X and check TTL on Y
+    redisClient.multi()
+        .incr(keyX)
+        .ttl(keyY)
+        .exec(function (err, replies) {
+
+            sys.log("MULTI got " + replies.length + " replies");
+
+            replies.forEach(function (reply, index) {
+                sys.log("Reply " + index + ": " + reply.toString());
+            });
+            
+            x = replies[0];
+            y = replies[1];
+        });
+            
+    sys.log("X: " + x);
+    sys.log("Y: " + y);
+        
+    // case 1: TTL is expired, need to set X and Y
+    if (y != -1) {
+        redisClient.multi()
+            .set(keyX, 1)
+            .setex(keyY, config.periodInSeconds, 0)
+            .exec();
+            
+        sys.log("TTL expired, proxying request for key: " + key);
+        proxy(request, response);
+        return;
+    }
+        
+    // case 2: TTL is not expired, verify we are under the limit of maxRequests
+    if (x > config.maxRequests) {
 
         // rate limit reached
         sys.log("Usage rate limit hit: " + key);
         
         response.writeHead(403, { 'X-RateLimit-Hit' : '' });
         response.end();
-        
+
         return;
     }
-
-    sys.log("Proxying request for key: " + key);
+    
+    sys.log("TTL not expired, under limit, proxying request for key: " + key);
     proxy(request, response);
 }
 
