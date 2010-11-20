@@ -88,26 +88,28 @@ function proxy(request, response) {
     var proxy = http.createClient(port, host, request.socket.secure);
     var proxy_request = proxy.request(request.method, request.url, request.headers);
 
-    proxy_request.addListener('response', function(proxy_response) {
+    proxy_request.on('response', function(proxy_response) {
         
-        proxy_response.addListener('data', function(chunk) {
+        proxy_response.on('data', function(chunk) {
             response.write(chunk, 'binary');
         });
       
-        proxy_response.addListener('end', function() {
+        proxy_response.on('end', function() {
             response.end();
         });
       
         response.writeHead(proxy_response.statusCode, proxy_response.headers);
     });
     
-    request.addListener('data', function(chunk) {
+    request.on('data', function(chunk) {
         proxy_request.write(chunk, 'binary');
     });
     
-    request.addListener('end', function() {
+    request.on('end', function() {
         proxy_request.end();
     });
+    
+    proxy_request.end();
 }
 
 function serverCallback(request, response) {
