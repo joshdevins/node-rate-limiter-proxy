@@ -15,51 +15,77 @@ Due to the way Redis <2.1.3 [treats volatile keys](http://code.google.com/p/redi
 
     $ redis-cli
 
-The first step is to create two keys, X and Y representing X requests in Y seconds. In this example, we'll use 60 seconds as the rate period and 10 as the maximum number of requests allowed in those 60 seconds. Because of the Redis limitation on volatile keys, the key prefixed with "Y:" will actually be the timing/expiration key only and not used to store the number of accesses in this timeframe. So for this key, the value is actually irrelevant since it will never be read or changed. The key prefixed with "X:" will keep track of the number of requests in the time period. We'll assume neither is yet set and set them both right now in one atomic transaction in Redis.
+The first step is to use two keys, X and Y representing X requests in Y seconds. In this example, we'll use 60 seconds as the rate period and 10 as the maximum number of requests allowed in those 60 seconds. Because of the Redis limitation on volatile keys, the key prefixed with "Y:" will actually be the timing/expiration key only and not used to store the number of accesses in this timeframe. So for this key, the value is actually irrelevant since it will never be read or changed. The key prefixed with "X:" will keep track of the number of requests in the time period. We'll assume neither is yet set and get both values from Redis. This is best done in a transaction so we can send just one request to Redis and have guarantees about consistency between the two values.
+
+	redis> MULTI
+	OK
+	redis> GET X:foo
+	QUEUED
+	redis> TTL Y:foo
+	QUEUED
+	redis> EXEC
+	1. (integer) -1
+	2. (integer) -1
+
+Since we've never set either of these keys, it's no wonder that they are both -1. The next step is to of course start incrementing the X counter and set the Y key to start counting down.
 
     redis> MULTI
 	OK
 	redis> SET X:foo 1
 	QUEUED
-	redis> SETEX Y:foo 60 1
+	redis> SETEX Y:foo 60 0
 	QUEUED
 	redis> EXEC
 	1. OK
 	2. OK
+
+Some introspection on the keys in Redis shows us their current values.
+
 	redis> MGET X:foo Y:foo
 	1. "1"
-	2. "1"
+	2. "0"
 	redis> TTL Y:foo
 	(integer) 56 <-- this is the number of seconds left for the key to "live" so will vary slightly depending on when you call TTL
 
-Now that we have both keys X and Y for resource "foo", we can pretend to access "foo" for a subsequent request.
+Now that we have both keys X and Y for resource "foo" we can let the request through.
 
-The first thing to do is test if the rate period (TTL of key Y) has been reached. If so, then we simple loop back and act as if this is the first ever access against this key, as above.
+Let's now keep going and imagine what subsequent requests would look like. Normally we wouldn't actually do a GET on the X value but instead would be optimistic and increment the value while we check the TTL of key Y.
 
-	redis> TTL Y|foo
-	(integer) -1
+	redis> MULTI
+	OK
+	redis> INCR X:foo
+	QUEUED
+	redis> TTL Y:foo
+	QUEUED
+	redis> EXEC
+	1. (integer) 5
+	2. (integer) -1
 
-Here the key has expired so we would just run the same set of commands as above. Should the expiry time not be reached, we need to do something else.
+Here we have the case where the resource has been accessed 4 times before (this would be the 5th access) but the TTL or Y value has been reached. In this case, we simply have to reset everything before letting the request through.
 
-	redis> TTL Y|foo
-	(integer) 40
+	redis> MULTI
+	OK
+	redis> SET X:foo 1
+	QUEUED
+	redis> SETEX Y:foo 60 0
+	QUEUED
+	redis> EXEC
+	1. OK
+	2. OK
+
+Should the expiry time not be reached, we need to do something else.
+
+	redis> MULTI
+	OK
+	redis> INCR X:foo
+	QUEUED
+	redis> TTL Y:foo
+	QUEUED
+	redis> EXEC
+	1. (integer) 11
+	2. (integer) 30
 	
-We can now be optimistic and just increment key X and check what the value would be if the access were to be allowed.
-
-	redis> INCR X|foo
-	(integer) 2
-	
-This is fine since the value is still less than our maximum allowed 10 requests per 60 seconds. So we let the request through. A few calls later we get into the following situation.
-	
-	redis> INCR X|foo
-	(integer) 11
-	
-Okay, now it's clear that if this request were to be let through we would exceed the maximum 10 requests per 60 seconds. In this case, we just deny the incoming request. We don'y need to decrement the key since the next request would just look like this.
-
-	redis> INCR X|foo
-	(integer) 12
-	
-Since this is still beyond 10, we can just keep incrementing away the attempts. In reality, this actually gives us some useful insight. Before we reset this key, we can record this value to disk somewhere for statistics purposes. This will give us an idea of how far beyond people's allowable limit they are attempting to go. Of course, the downside is that you continue to increment this value and possibly reach the maximum integer value. If incrementing is not for you, you can always be pessimistic and just do a check before allowing the request and incrementing the counter.
+Okay, now it's clear that if this request were to be let through we would exceed the maximum 10 requests per 60 seconds. In this case, we just deny the incoming request. We don't need to decrement the key since the next request would still result in a denial: 12 > 10. In reality, this actually gives us some useful insight. Before we reset this key, we can record this value to disk somewhere for statistics purposes. This will give us an idea of how far beyond people's allowable limit they are attempting to go. Of course, the downside is that you continue to increment this value and possibly reach the maximum integer value. If incrementing is not for you, you can always be pessimistic and just do a check before allowing the request and incrementing the counter.
 
 	redis> GET X|foo
 	"9"
@@ -68,23 +94,8 @@ Since this is still beyond 10, we can just keep incrementing away the attempts. 
 	
 This does require two calls for every successful request, but will avoid running out of integers if you were to increment forever.
 
-Now that the value of X is beyond the maximum, we have to wait for the TTL to expire before allowing more requests.
+Of course, once Redis >=2.1.3 is stable and released, this algorithm becomes a bit simpler since it will require only one key to be operated on.
 
-	redis> TTL Y|foo
-	(integer) -1
-
-When we see this, we simply go back to the first set of commands, resetting the X key and expiring Y.
-
-	redis> MULTI
-	OK
-	redis> SET X:foo 1
-	QUEUED
-	redis> SETEX Y:foo 60 1
-	QUEUED
-	redis> EXEC
-	1. OK
-	2. OK
-	
 Sources
 ---
 
