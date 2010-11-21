@@ -105,7 +105,8 @@ function lookupKeyAndProxyIfAllowed(request, response, key) {
                 // rate limit reached
                 sys.log("Usage rate limit hit: " + key);
 
-                response.writeHead(403, getStatusHeaders(x, y));
+                response.writeHead(409, getStatusHeaders(x, y));
+                response.write(JSON.stringify(getStatus(x, y)) + "\n");
                 response.end();
 
                 return;
@@ -196,7 +197,7 @@ function getStatusAndRespond(request, response, key) {
             sys.log("Y:" + key + " = " + y);
 
             response.writeHead(200);
-            response.write(JSON.stringify(getStatus(x, y)));
+            response.write(JSON.stringify(getStatus(x, y)) + "\n");
             response.end();
         });
 }

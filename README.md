@@ -56,7 +56,6 @@ TODO
 ---
 
  * better Redis failure handling
- * add information in HTTP body on 403 Forbidden/reached limit
  * case insensitive search for the status header: X-RateLimit-Status
  * check for null keys from key generate function
  * support setting the proxied request remote address to the same as the originating remote address (avoids need for <code>X-Forwarded-For</code> header)
