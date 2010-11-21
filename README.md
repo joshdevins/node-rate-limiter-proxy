@@ -62,9 +62,9 @@ TODO
  * check for null keys from key generate function
  * support setting the proxied request remote address to the same as the originating remote address (avoids need for <code>X-Forwarded-For</code> header)
  * HTTPS support
- * implement optimistic locking
-   * in each Node instance, although this is imperfect since there will be multiple Node instances
-   * in Redis to ensure race condition goes away between TTL and reset (requires Redis 2.1.0)
+ * ensure race condition goes away between TTL expiry check and reset (destination server can get stampeded)
+   * flagging in each Node instance, although this is imperfect since there will be multiple Node instances
+   * optimistic locking in Redis (requires Redis 2.1.0)
 
 Sources
 ---
