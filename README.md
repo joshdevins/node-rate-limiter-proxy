@@ -54,7 +54,6 @@ TODO
 
  * test HTTPS support
  * support setting the proxied request remote address to the same as the originating remote address (avoids need for <code>X-Forwarded-For</code> header)
- * make configuration reloadable if possible
  * better Redis failure handling
 
 Sources
