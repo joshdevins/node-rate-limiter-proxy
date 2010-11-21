@@ -5,10 +5,11 @@
  */
 
 var sys = require("sys"),
+    fs = require('fs'),
     http = require("http"),
     url = require("url");
 var redis = require("./lib/node_redis.js");
-var config = require("./config.js"),
+var config = require("./config.js").config,
     utils = require("./utils.js");
 
 /**
@@ -16,13 +17,13 @@ var config = require("./config.js"),
  */
 function getStatus(x, y) {
 
-    var ttl = y == -1 ? config.config.periodInSeconds : y;
+    var ttl = y == -1 ? config.periodInSeconds : y;
     var requests = y == -1 ? 0 : parseInt(x);
     
     return {
-        max_requests: config.config.maxRequests,
+        max_requests: config.maxRequests,
         requests: requests,
-        remaining: requests > config.config.maxRequests ? 0 : config.config.maxRequests - requests,
+        remaining: requests > config.maxRequests ? 0 : config.maxRequests - requests,
         ttl: ttl,
         reset: utils.getSecondsSinceEpoch() + ttl
     }   
@@ -78,16 +79,16 @@ function lookupKeyAndProxyIfAllowed(request, response, key) {
             if (y == -1) {
                 redisClient.multi()
                     .set(keyX, 1)
-                    .setex(keyY, config.config.periodInSeconds, 0)
+                    .setex(keyY, config.periodInSeconds, 0)
                     .exec();
 
                 sys.log("TTL expired, proxying request for key: " + key);
-                proxy(request, response, 1, config.config.periodInSeconds, requestEnded);
+                proxy(request, response, 1, config.periodInSeconds, requestEnded);
                 return;
             }
 
             // case 2: TTL is not expired, verify we are under the limit of maxRequests
-            if (x > config.config.maxRequests) {
+            if (x > config.maxRequests) {
 
                 // rate limit reached
                 sys.log("Usage rate limit hit: " + key);
@@ -180,16 +181,16 @@ function serverCallback(request, response) {
     var uri = url.parse(request.url);
     var path = uri.pathname;
 
-    if (path.match("^" + config.config.statusPath) == config.config.statusPath) {
+    if (path.match("^" + config.statusPath) == config.statusPath) {
         
-        key = path.substring(config.config.statusPath.length, path.length);
+        key = path.substring(config.statusPath.length, path.length);
         getStatusAndRespond(request, response, key);
         return;
     }
 
     // get key from a configurable function
     // TODO: Check for null keys
-    var key = config.config.buildKeyFunction(request);
+    var key = config.buildKeyFunction(request);
     
     // TODO: case insensitive search for the header
     if (request.headers['x-ratelimit-status'] != null) {
@@ -201,7 +202,7 @@ function serverCallback(request, response) {
 }
 
 // create Redis client
-var redisClient = redis.createClient(config.config.redis_port, config.config.redis_host);
+var redisClient = redis.createClient(config.redis_port, config.redis_host);
 
 // TODO: move this somewhere so we can return a user error too
 redisClient.on("error", function (err) {
@@ -209,5 +210,5 @@ redisClient.on("error", function (err) {
 });
 
 // startup server
-sys.log("Starting HTTP usage rate limiter proxy server on port: " + config.config.proxy_port);
-http.createServer(serverCallback).listen(config.config.proxy_port);
+sys.log("Starting HTTP usage rate limiter proxy server on port: " + config.proxy_port);
+http.createServer(serverCallback).listen(config.proxy_port);
