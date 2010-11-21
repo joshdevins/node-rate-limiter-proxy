@@ -54,19 +54,15 @@ TODO
 
  * test HTTPS support
  * support setting the proxied request remote address to the same as the originating remote address (avoids need for <code>X-Forwarded-For</code> header)
- * externalize configuration and make reloadable
-   * proxy port
-   * Redis host:port
-   * inject JS function to select Redis key given ServerRequest
-   * URL for the status check
+ * make configuration reloadable if possible
  * better Redis failure handling
 
 Sources
 ---
 
-A list of other source code that went into this implementation:
+A list of other source code that went into this implementation either directly or indirectly through concepts/ideas:
 
- * [nodejs-proxy](https://github.com/pkrumins/nodejs-proxy) (short and simple node.js proxy, configuration reloading)
+ * [nodejs-proxy](https://github.com/pkrumins/nodejs-proxy) (short and simple basis for the core proxy code, configuration example)
 
 Implementation Notes
 ---
