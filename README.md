@@ -33,7 +33,7 @@ You will also need to explicitly set the <code>Host</code> header when testing s
 Configuration
 ---
 
-All configuration is in <code>config.js</code>. This includes a function to determine how to build the access key. An access key is what is used to uniquely identify a user or set of users whose access rates you want to control. By default, the key is built from the <code>Authentication</code> header.
+All configuration is in <code>config.js</code>. This includes a function to determine how to build the access key. An access key is what is used to uniquely identify a user or set of users whose access rates you want to control. By default, the key is built from the <code>Authentication</code> header, however it could just as easily be built up from the source IP address or request path.
 
 API Usage
 ---
