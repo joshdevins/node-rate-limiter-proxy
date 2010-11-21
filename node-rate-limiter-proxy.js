@@ -51,12 +51,27 @@ function getStatusHeaders(x, y) {
     };
 }
 
+function redisConnectionError(response, key) {
+
+    sys.log("Request received, Redis client is not connected: " + key);
+
+    response.writeHead(503);
+    response.write("Service unavailable, please contact the administrator\n");
+    response.end();   
+}
+
 /**
  * Provided a key, lookup in Redis what the usage rate is and pass through if under limit. If over or at limit,
  * return an error code to the user.
  */
 function lookupKeyAndProxyIfAllowed(request, response, key) {
-
+    
+    // client is not connected before we start anything
+    if (!redisClient.connected) {
+        redisConnectionError(response, key);
+        return;
+    }
+    
     sys.log("Request received, usage rate lookup for key: " + key);
     
     var keyX = "X:" + key;
@@ -236,9 +251,8 @@ function serverCallback(request, response) {
     lookupKeyAndProxyIfAllowed(request, response, key);
 }
 
-// TODO: move this somewhere so we can return a user error too
 redisClient.on('error', function (err) {
-    sys.log("Redis connection error to " + redisClient.host + ":" + redisClient.port + " - " + err);
+    sys.log(err);
 });
 
 // startup server
