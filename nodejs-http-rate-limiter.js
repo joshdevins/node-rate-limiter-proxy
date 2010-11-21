@@ -8,6 +8,7 @@ var sys = require("sys"),
     http = require("http"),
     url = require("url");
 var redis = require("./lib/node_redis.js");
+var utils = require("./utils.js");
 
 var config = {
     proxy_port: 8080,
@@ -16,10 +17,25 @@ var config = {
 };
 
 /**
+ * Returns X headers given the current state of the limiter.
+ */
+function getExtraHeaders(x, y) {
+
+    var remaining = x > config.maxRequests ? 0 : config.maxRequests - x;
+
+    return {
+        'X-RateLimit-MaxRequests' : config.maxRequests,
+        'X-RateLimit-Requests' : x,
+        'X-RateLimit-Remaining' : remaining,
+        'X-RateLimit-TTL' : y,
+        'X-RateLimit-Reset' : utils.getSecondsSinceEpoch() + y };
+}
+
+/**
  * Provided a key, lookup in Redis what the usage rate is and pass through if under limit. If over or at limit,
  * return an error code to the user.
  */
-function lookupKeyAndProxy(request, response, key) {
+function lookupKeyAndProxyIfAllowed(request, response, key) {
 
     sys.log("Usage rate lookup: " + key);
     
@@ -53,7 +69,7 @@ function lookupKeyAndProxy(request, response, key) {
                     .exec();
 
                 sys.log("TTL expired, proxying request for key: " + key);
-                proxy(request, response, x, y, requestEnded);
+                proxy(request, response, 1, config.periodInSeconds, requestEnded);
                 return;
             }
 
@@ -72,27 +88,6 @@ function lookupKeyAndProxy(request, response, key) {
             sys.log("TTL not expired, number of requests under limit, proxying request for key: " + key);
             proxy(request, response, x, y, requestEnded);
         });
-}
-
-/**
- * Simlple fills in the headers given the current state of the limiter.
- */
-function getExtraHeaders(x, y) {
-    
-    return {
-        'X-RateLimit-MaxRequests' : config.maxRequests,
-        'X-RateLimit-Requests' : x,
-        'X-RateLimit-TTL' : y };
-}
-
-/**
- * Merges sets of headers very simply. Might want to get fancy later by doing things like looking at X-Forwarded-For and appending to it.
- */
-function mergeHeaders(headers1, headers2) {
-
-    for (attrname in headers2) {
-        headers1[attrname] = headers2[attrname];
-    }
 }
 
 /**
@@ -124,7 +119,7 @@ function proxy(request, response, x, y, requestEnded) {
         });
 
         // add extra headers
-        var headers = mergeHeaders(proxy_response.headers, getExtraHeaders(x, y));
+        var headers = utils.mergeHeaders(proxy_response.headers, getExtraHeaders(x, y));
 
         response.writeHead(proxy_response.statusCode, proxy_response.headers);
     });
@@ -145,16 +140,15 @@ function proxy(request, response, x, y, requestEnded) {
 function serverCallback(request, response) {
 
     var auth = request.headers.authorization;
-    //var method = request.method;
-    //var uri = url.parse(request.url).pathname;
-    
-    var key = auth;
+    var key = auth.split(' ')[1];
 
-    lookupKeyAndProxy(request, response, key);
+    lookupKeyAndProxyIfAllowed(request, response, key);
 }
 
 // create Redis client
 var redisClient = redis.createClient(6379, 'localhost');
+
+// move this somewhere so we can return a user error too
 redisClient.on("error", function (err) {
     sys.log("Redis connection error to " + redisClient.host + ":" + redisClient.port + " - " + err);
 });
