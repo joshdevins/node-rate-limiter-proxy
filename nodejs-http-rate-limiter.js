@@ -13,22 +13,49 @@ var utils = require("./utils.js");
 var config = {
     proxy_port: 8080,
     maxRequests: 10,
-    periodInSeconds: 60
+    periodInSeconds: 60,
+    statusPath: '/status/', // must start and end with forward slashes
+    buildKeyFunction: function(request) {
+        
+        if (request.headers.authorization == null) {
+            return null;
+        }
+        
+        return request.headers.authorization.split(' ')[1];
+    }
 };
 
 /**
- * Returns X headers given the current state of the limiter.
+ * Returns an object representing the current state of the limiter.
  */
-function getExtraHeaders(x, y) {
+function getStatus(x, y) {
 
-    var remaining = x > config.maxRequests ? 0 : config.maxRequests - x;
-
+    var ttl = y == -1 ? config.periodInSeconds : y;
+    var requests = y == -1 ? 0 : parseInt(x);
+    
     return {
-        'X-RateLimit-MaxRequests' : config.maxRequests,
-        'X-RateLimit-Requests' : x,
-        'X-RateLimit-Remaining' : remaining,
-        'X-RateLimit-TTL' : y,
-        'X-RateLimit-Reset' : utils.getSecondsSinceEpoch() + y };
+        max_requests: config.maxRequests,
+        requests: requests,
+        remaining: requests > config.maxRequests ? 0 : config.maxRequests - requests,
+        ttl: ttl,
+        reset: utils.getSecondsSinceEpoch() + ttl
+    }   
+}
+
+/**
+ * Wraps #getStatus in headers for the HTTP response.
+ */
+function getStatusHeaders(x, y) {
+
+    var status = getStatus(x, y);
+    
+    return {
+        'X-RateLimit-MaxRequests' : status.max_requests,
+        'X-RateLimit-Requests' : status.requests,
+        'X-RateLimit-Remaining' : status.remaining,
+        'X-RateLimit-TTL': status.ttl,
+        'X-RateLimit-Reset': status.reset
+    };
 }
 
 /**
@@ -79,7 +106,7 @@ function lookupKeyAndProxyIfAllowed(request, response, key) {
                 // rate limit reached
                 sys.log("Usage rate limit hit: " + key);
 
-                response.writeHead(403, getExtraHeaders(x, y));
+                response.writeHead(403, getStatusHeaders(x, y));
                 response.end();
 
                 return;
@@ -119,7 +146,7 @@ function proxy(request, response, x, y, requestEnded) {
         });
 
         // add extra headers
-        var headers = utils.mergeHeaders(proxy_response.headers, getExtraHeaders(x, y));
+        var headers = utils.mergeHeaders(proxy_response.headers, getStatusHeaders(x, y));
 
         response.writeHead(proxy_response.statusCode, proxy_response.headers);
     });
@@ -137,10 +164,52 @@ function proxy(request, response, x, y, requestEnded) {
     }
 }
 
+function getStatusAndRespond(request, response, key) {
+    
+    sys.log("Status request received, usage rate lookup for key: " + key);
+    
+    var keyX = "X:" + key;
+    var keyY = "Y:" + key;
+    
+    redisClient.multi()
+        .get(keyX)
+        .ttl(keyY)
+        .exec(function (err, replies) {
+            
+            x = replies[0];
+            y = replies[1];
+
+            sys.log("X:" + key + " = " + x);
+            sys.log("Y:" + key + " = " + y);
+
+            response.writeHead(200);
+            response.write(JSON.stringify(getStatus(x, y)));
+            response.end();
+        });
+}
+
 function serverCallback(request, response) {
 
-    var auth = request.headers.authorization;
-    var key = auth.split(' ')[1];
+    // test for status API calls
+    var uri = url.parse(request.url);
+    var path = uri.pathname;
+
+    if (path.match("^" + config.statusPath) == config.statusPath) {
+        
+        key = path.substring(config.statusPath.length, path.length);
+        getStatusAndRespond(request, response, key);
+        return;
+    }
+
+    // get key from a configurable function
+    // TODO: Check for null keys
+    var key = config.buildKeyFunction(request);
+    
+    // TODO: case insensitive search for the header
+    if (request.headers['x-ratelimit-status'] != null) {
+        getStatusAndRespond(request, response, key);
+        return;
+    }
 
     lookupKeyAndProxyIfAllowed(request, response, key);
 }

@@ -37,13 +37,13 @@ API Usage
 
 Included is a very basic API allowing a client to fetch the current state of the rate limiter for either: an arbitrary key or an exact URL/request.
 
-To retrieve an arbitrary key, it must first be URL encoded. There needs to also be some insight into the white box that is the proxy since the client needs to be aware of how the key is built. Since the default is to use the Authentication header as the key, I already have a URL encoded value (see the request headers in the first example of basic usage). The <code>status</code> URI path is configurable as well in case that collides with a URI on the backing/proxied server.
+To retrieve an arbitrary key, the key might first need to be URL encoded. There needs to be some insight into the white box that is the proxy since the client needs to be aware of how the key is built. Since the default is to use the Authentication header as the key, I already have a URL encoded value (see the request headers in the first example of basic usage). The <code>status</code> URI path is configurable as well in case that collides with a URI on the backing/proxied server.
 
     $ curl -v http://localhost:8080/status/am9zaDpkZXZpbnM=
 
 To test the status of the rate limiter for a specific request, just add the header <code>X-RateLimit-Status</code> to a regular request. This will *NOT* send a request to the backing server but instead just return the status object.
 
-	$ curl -v --header 'X-RateLimit-Status' --header 'Host: localhost' http://josh:devins@localhost:8080/this/is/the/path
+	$ curl -v --header 'X-RateLimit-Status: true' --header 'Host: localhost' http://josh:devins@localhost:8080/this/is/the/path
 
 At the moment, only JSON responses are supported however this can easily be extended.
 
