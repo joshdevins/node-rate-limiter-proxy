@@ -147,7 +147,11 @@ function proxy(request, response, x, y, requestEnded) {
         }
     });
 
-    var proxy_request = proxy.request(request.method, request.url, request.headers);
+    // add keep-alive to upstream server for connection re-use
+    var headers = request.headers;
+    headers.connection = 'keep-alive';
+
+    var proxy_request = proxy.request(request.method, request.url, headers);
 
     proxy_request.on('response', function(proxy_response) {
         
