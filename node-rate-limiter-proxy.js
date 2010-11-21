@@ -216,10 +216,9 @@ function serverCallback(request, response) {
     }
 
     // get key from a configurable function
-    // TODO: Check for null keys
+    // TODO: Check for null keys?
     var key = config.buildKeyFunction(request);
-    
-    // TODO: case insensitive search for the header
+
     if (request.headers['x-ratelimit-status'] != null) {
         getStatusAndRespond(request, response, key);
         return;
