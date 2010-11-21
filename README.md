@@ -56,7 +56,6 @@ TODO
 ---
 
  * better Redis failure handling
- * check for null keys from key generate function
  * HTTPS support
  * ensure race condition goes away between TTL expiry check and reset (upstream server can get stampeded)
    * optimistic locking in Redis (requires Redis 2.1.0)

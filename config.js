@@ -12,11 +12,11 @@ var config = {
     periodInSeconds: 60,
     statusPath: '/status/', // must start and end with forward slashes
     buildKeyFunction: function(request) {
-        
+
         if (request.headers.authorization == null) {
             return '';
         }
-        
+
         return request.headers.authorization.split(' ')[1];
     }
 };
