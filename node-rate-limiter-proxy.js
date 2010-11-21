@@ -117,7 +117,7 @@ function lookupKeyAndProxyIfAllowed(request, response, key) {
 }
 
 /**
- * Proxy the request to the destination service.
+ * Proxy the request to the upstream server.
  */
 function proxy(request, response, x, y, requestEnded) {
 
@@ -132,6 +132,20 @@ function proxy(request, response, x, y, requestEnded) {
     sys.log("Proxying to: " + host + ":" + port);
 
     var proxy = http.createClient(port, host, request.socket.secure);
+
+    proxy.on('error', function(connectionException) {
+        
+        sys.log(connectionException);
+        
+        if (connectionException.errno === process.ECONNREFUSED) {
+            
+            // connection refused from upstream server                
+            response.writeHead(504);
+            response.write("Connection refused from upstream server: " + host + ":" + port + "\n");
+            response.end();
+        }
+    });
+
     var proxy_request = proxy.request(request.method, request.url, request.headers);
 
     proxy_request.on('response', function(proxy_response) {
@@ -214,7 +228,7 @@ function serverCallback(request, response) {
 }
 
 // TODO: move this somewhere so we can return a user error too
-redisClient.on("error", function (err) {
+redisClient.on('error', function (err) {
     sys.log("Redis connection error to " + redisClient.host + ":" + redisClient.port + " - " + err);
 });
 

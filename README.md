@@ -28,7 +28,7 @@ If you use something like <code>curl</code> to make requests to the proxy, you w
 	< X-RateLimit-TTL: 60
 	< X-RateLimit-Reset: 1290342852
 
-You will also need to either set your client to use a proxy or explicitly set the <code>Host</code> header when testing since this is what the proxy uses to determine the destination for the proxied request. This is particularly important when both proxy and destination server are running on <code>localhost</code> otherwise you will get into an endless loop.
+You will also need to either set your client to use a proxy or explicitly set the <code>Host</code> header when testing since this is what the proxy uses to determine the destination for the proxied request. This is particularly important when both proxy and upstream server are running on <code>localhost</code> otherwise you will get into an endless loop.
 
 Configuration
 ---
@@ -55,22 +55,20 @@ At the moment, only JSON responses are supported however this can easily be exte
 TODO
 ---
 
- * increase robustness to destination host failures (i.e. if not responsive)
  * better Redis failure handling
  * add information in HTTP body on 403 Forbidden/reached limit
  * case insensitive search for the status header: X-RateLimit-Status
  * check for null keys from key generate function
  * support setting the proxied request remote address to the same as the originating remote address (avoids need for <code>X-Forwarded-For</code> header)
  * HTTPS support
- * ensure race condition goes away between TTL expiry check and reset (destination server can get stampeded)
+ * ensure race condition goes away between TTL expiry check and reset (upstream server can get stampeded)
    * optimistic locking in Redis (requires Redis 2.1.0)
 
-Sources
+Acknowledgements
 ---
 
-A list of other source code that went into this implementation either directly or indirectly through concepts/ideas:
-
  * [nodejs-proxy](https://github.com/pkrumins/nodejs-proxy) (short and simple basis for the core proxy code, configuration example)
+ * [HTTP client connection error handling](http://rentzsch.tumblr.com/post/664884799/node-js-handling-refused-http-client-connections)
 
 Implementation Notes
 ---
