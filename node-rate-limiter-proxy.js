@@ -11,6 +11,12 @@ var sys = require("sys"),
 var redis = require("./lib/node_redis.js");
 var config = require("./config.js").config,
     utils = require("./utils.js");
+    
+// create Redis client
+var redisClient = redis.createClient(config.redis_port, config.redis_host);
+
+// flags to control dogpiling at race condition (a flag per key)
+var dogpileControlFlags = {};
 
 /**
  * Returns an object representing the current state of the limiter.
@@ -76,11 +82,17 @@ function lookupKeyAndProxyIfAllowed(request, response, key) {
             sys.log("Y:" + key + " = " + y);
             
             // case 1: TTL is expired, need to set X and Y
-            if (y == -1) {
+            if (y == -1 && !dogpileControlFlags[key]) {
+
+                dogpileControlFlags[key] = true;
+
                 redisClient.multi()
                     .set(keyX, 1)
                     .setex(keyY, config.periodInSeconds, 0)
-                    .exec();
+                    .exec(function(e, r) {
+                            // on success resetting the key TTL, delete flag
+                            delete dogpileControlFlags[key];
+                        });
 
                 sys.log("TTL expired, proxying request for key: " + key);
                 proxy(request, response, 1, config.periodInSeconds, requestEnded);
@@ -200,9 +212,6 @@ function serverCallback(request, response) {
 
     lookupKeyAndProxyIfAllowed(request, response, key);
 }
-
-// create Redis client
-var redisClient = redis.createClient(config.redis_port, config.redis_host);
 
 // TODO: move this somewhere so we can return a user error too
 redisClient.on("error", function (err) {
