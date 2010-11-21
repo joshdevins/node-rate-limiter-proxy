@@ -57,6 +57,7 @@ TODO
 
  * increase robustness to destination host failures (i.e. if not responsive)
  * better Redis failure handling
+ * add information in HTTP body on 403 Forbidden/reached limit
  * support setting the proxied request remote address to the same as the originating remote address (avoids need for <code>X-Forwarded-For</code> header)
  * HTTPS support
 
