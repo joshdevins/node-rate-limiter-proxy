@@ -28,9 +28,7 @@ If you use something like <code>curl</code> to make requests to the proxy, you w
 	< X-RateLimit-TTL: 60
 	< X-RateLimit-Reset: 1290342852
 
-You will also need to explicitly set the <code>Host</code> header when testing since this is what the proxy uses to determine the destination of the proxied request.
-
-This is particularly important when both proxy and destination server are running on <code>localhost</code> otherwise you will get into an endless loop.
+You will also need to explicitly set the <code>Host</code> header when testing since this is what the proxy uses to determine the destination for the proxied request. This is particularly important when both proxy and destination server are running on <code>localhost</code> otherwise you will get into an endless loop.
 
 Configuration
 ---
