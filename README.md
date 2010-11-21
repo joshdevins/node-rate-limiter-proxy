@@ -1,7 +1,7 @@
 HTTP Rate Limiting Proxy Server
 ===
 
-A very simple node.js HTTP proxy providing usage rate limiting using Redis. This implementation has been tested against node.js v0.2.5 and Redis 2.0.4.
+A very simple node.js HTTP proxy providing usage rate limiting using Redis. This implementation has been tested against node.js v0.2.5 and Redis v2.0.4.
 
 Basic Usage
 ---
@@ -30,7 +30,12 @@ If you use something like <code>curl</code> to make requests to the proxy, you w
 
 You will also need to explicitly set the <code>Host</code> header when testing since this is what the proxy uses to determine the destination of the proxied request.
 
-This is particularly important when both proxy and destination server are running on <code>localhost</code> otherwise you will get into an endless loop. This is because the proxy thinks you want to get to "localhost:8080" as your final destination and will try to proxy to that host:port which is itself the proxy. And around you go.
+This is particularly important when both proxy and destination server are running on <code>localhost</code> otherwise you will get into an endless loop.
+
+Configuration
+---
+
+All configuration is in <code>config.js</code>. This includes a function to determine how to build the access key. An access key is what is used to uniquely identify a user or set of users whose access rates you want to control. By default, the key is built from the <code>Authentication</code> header.
 
 API Usage
 ---
