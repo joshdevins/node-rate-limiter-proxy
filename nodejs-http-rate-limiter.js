@@ -37,7 +37,7 @@ function getExtraHeaders(x, y) {
  */
 function lookupKeyAndProxyIfAllowed(request, response, key) {
 
-    sys.log("Usage rate lookup: " + key);
+    sys.log("Request received, usage rate lookup for key: " + key);
     
     var keyX = "X:" + key;
     var keyY = "Y:" + key;
@@ -58,8 +58,8 @@ function lookupKeyAndProxyIfAllowed(request, response, key) {
             x = replies[0];
             y = replies[1];
 
-            sys.log("X: " + x);
-            sys.log("Y: " + y);
+            sys.log("X:" + key + " = " + x);
+            sys.log("Y:" + key + " = " + y);
             
             // case 1: TTL is expired, need to set X and Y
             if (y == -1) {
@@ -148,7 +148,7 @@ function serverCallback(request, response) {
 // create Redis client
 var redisClient = redis.createClient(6379, 'localhost');
 
-// move this somewhere so we can return a user error too
+// TODO: move this somewhere so we can return a user error too
 redisClient.on("error", function (err) {
     sys.log("Redis connection error to " + redisClient.host + ":" + redisClient.port + " - " + err);
 });

@@ -3,14 +3,14 @@ HTTP Rate Limiting Proxy Server
 
 A very simple node.js HTTP proxy providing usage rate limiting using Redis. This implementation has been tested against node.js v0.2.5 and Redis 2.0.4.
 
-Usage
+Basic Usage
 ---
 
 	node nodejs-http-rate-limiter.js
 	
 If you use something like <code>curl</code> to make requests to the proxy, you will see some extra headers that help you understand the current state of the limiter in Redis. The custom headers used are very similar to those in the [Twitter API](http://dev.twitter.com/pages/rate_limiting_faq#checking).
 
-	$ curl -v --header "Host: localhost" http://josh:devins@localhost:8080/
+	$ curl -v --header "Host: localhost:80" http://josh:devins@localhost:8080/
 
 	> GET / HTTP/1.1
 	> Authorization: Basic am9zaDpkZXZpbnM=
@@ -23,10 +23,48 @@ If you use something like <code>curl</code> to make requests to the proxy, you w
 	< server: Apache/2.2.15 (Unix) mod_ssl/2.2.15 OpenSSL/0.9.8l DAV/2
 	...
 	< X-RateLimit-MaxRequests: 10
-	< X-RateLimit-Requests: 3
-	< X-RateLimit-TTL: -1
+	< X-RateLimit-Requests: 1
+	< X-RateLimit-Remaining: 9
+	< X-RateLimit-TTL: 60
+	< X-RateLimit-Reset: 1290342852
 
-You will also need to explicitly set the <code>Host</code> header when testing against localhost otherwise you will get into an endless loop. This is because the proxy thinks you want to get to "localhost:8080" as your final destination and will try to proxy to that host:port.
+You will also need to explicitly set the <code>Host</code> header when testing since this is what the proxy uses to determine the destination of the proxied request.
+
+This is particularly important when both proxy and destination server are running on <code>localhost</code> otherwise you will get into an endless loop. This is because the proxy thinks you want to get to "localhost:8080" as your final destination and will try to proxy to that host:port which is itself the proxy. And around you go.
+
+API Usage
+---
+
+Included is a very basic API allowing a client to fetch the current state of the rate limiter for either: an arbitrary key or an exact URL/request.
+
+To retrieve an arbitrary key, it must first be URL encoded. There needs to also be some insight into the white box that is the proxy since the client needs to be aware of how the key is built. Since the default is to use the Authentication header as the key, I already have a URL encoded value (see the request headers in the first example of basic usage). The <code>status</code> URI path is configurable as well in case that collides with a URI on the backing/proxied server.
+
+    $ curl -v http://localhost:8080/status/am9zaDpkZXZpbnM=
+
+To test the status of the rate limiter for a specific request, just add the header <code>X-RateLimit-Status</code> to a regular request. This will *NOT* send a request to the backing server but instead just return the status object.
+
+	$ curl -v --header 'X-RateLimit-Status' --header 'Host: localhost' http://josh:devins@localhost:8080/this/is/the/path
+
+At the moment, only JSON responses are supported however this can easily be extended.
+
+TODO
+---
+
+ * test HTTPS support
+ * support setting the proxied request remote address to the same as the originating remote address (avoids need for <code>X-Forwarded-For</code> header)
+ * externalize configuration and make reloadable
+   * proxy port
+   * Redis host:port
+   * inject JS function to select Redis key given ServerRequest
+   * URL for the status check
+ * better Redis failure handling
+
+Sources
+---
+
+A list of other source code that went into this implementation:
+
+ * [nodejs-proxy](https://github.com/pkrumins/nodejs-proxy) (short and simple node.js proxy, configuration reloading)
 
 Implementation Notes
 ---
@@ -104,32 +142,14 @@ Should the expiry time not be reached, we need to do something else.
 	redis> EXEC
 	1. (integer) 11
 	2. (integer) 30
-	
+
 Okay, now it's clear that if this request were to be let through we would exceed the maximum 10 requests per 60 seconds. In this case, we just deny the incoming request. We don't need to decrement the key since the next request would still result in a denial: 12 > 10. In reality, this actually gives us some useful insight. Before we reset this key, we can record this value to disk somewhere for statistics purposes. This will give us an idea of how far beyond people's allowable limit they are attempting to go. Of course, the downside is that you continue to increment this value and possibly reach the maximum integer value. If incrementing is not for you, you can always be pessimistic and just do a check before allowing the request and incrementing the counter.
 
 	redis> GET X|foo
 	"9"
 	redis> INCR X|foo
 	(integer) 10
-	
+
 This does require two calls for every successful request, but will avoid running out of integers if you were to increment forever.
 
 Of course, once Redis >=2.1.3 is stable and released, this algorithm becomes a bit simpler since it will require only one key to be operated on.
-
-Sources
----
-
-A list of other source code that went into this implementation:
-
- * [nodejs-proxy](https://github.com/pkrumins/nodejs-proxy) (short and simple node.js proxy, configuration reloading)
-
-TODO
----
-
- * test HTTPS support
- * support setting the proxied request remote address to the same as the originating remote address (avoids need for <code>X-Forwarded-For</code> header)
- * add debug/metadata in response on remaining call quotas
- * externalize configuration and make reloadable
-   * proxy port
-   * Redis host:port
-   * inject JS function to select Redis key given ServerRequest
