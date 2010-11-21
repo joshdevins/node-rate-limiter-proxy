@@ -6,7 +6,7 @@ A very simple node.js HTTP proxy providing usage rate limiting using Redis. This
 Basic Usage
 ---
 
-	node nodejs-http-rate-limiter.js
+	node node-rate-limiter-proxy.js
 	
 If you use something like <code>curl</code> to make requests to the proxy, you will see some extra headers that help you understand the current state of the limiter in Redis. The custom headers used are very similar to those in the [Twitter API](http://dev.twitter.com/pages/rate_limiting_faq#checking).
 
