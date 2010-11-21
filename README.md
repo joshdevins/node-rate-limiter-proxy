@@ -55,7 +55,7 @@ At the moment, only JSON responses are supported however this can easily be exte
 TODO
 ---
 
- * better Redis failure handling
+ * better Redis failure handling mid-request
  * HTTPS support
  * ensure race condition goes away between TTL expiry check and reset (upstream server can get stampeded)
    * optimistic locking in Redis (requires Redis 2.1.0)
