@@ -1,3 +1,8 @@
+/**
+ * A very simple node.js HTTP proxy providing usage rate limiting using Redis.
+ *
+ * Author: Josh Devins (info@joshdevins.net, http://joshdevins.net)
+ */
 
 /**
  * Returns the number of seconds since epoch, aka Unix time.
