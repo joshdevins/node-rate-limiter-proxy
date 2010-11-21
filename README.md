@@ -55,9 +55,10 @@ At the moment, only JSON responses are supported however this can easily be exte
 TODO
 ---
 
- * test HTTPS support
- * support setting the proxied request remote address to the same as the originating remote address (avoids need for <code>X-Forwarded-For</code> header)
+ * increase robustness to destination host failures (i.e. if not responsive)
  * better Redis failure handling
+ * support setting the proxied request remote address to the same as the originating remote address (avoids need for <code>X-Forwarded-For</code> header)
+ * HTTPS support
 
 Sources
 ---
