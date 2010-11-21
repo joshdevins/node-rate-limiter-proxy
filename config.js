@@ -14,7 +14,7 @@ var config = {
     buildKeyFunction: function(request) {
         
         if (request.headers.authorization == null) {
-            return null;
+            return '';
         }
         
         return request.headers.authorization.split(' ')[1];
