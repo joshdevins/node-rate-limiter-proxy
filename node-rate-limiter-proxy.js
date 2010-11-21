@@ -150,6 +150,7 @@ function proxy(request, response, x, y, requestEnded) {
     // add keep-alive to upstream server for connection re-use
     var headers = request.headers;
     headers.connection = 'keep-alive';
+    headers['x-forwarded-for'] = utils.getNewXForwardedForHeader(request);
 
     var proxy_request = proxy.request(request.method, request.url, headers);
 

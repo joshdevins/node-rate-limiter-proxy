@@ -12,11 +12,25 @@ exports.getSecondsSinceEpoch = function() {
 }
 
 /**
- * Merges sets of headers very simply. Might want to get fancy later by doing things like looking at X-Forwarded-For and appending to it.
+ * Merges sets of headers very simply.
  */
 exports.mergeHeaders = function(headers1, headers2) {
 
     for (attrname in headers2) {
         headers1[attrname] = headers2[attrname];
+    }
+}
+
+/**
+ * Given a Node ServerRequest object, determine the new X-Forwarded-For header for upstream server in the proxied request.
+ */
+exports.getNewXForwardedForHeader = function(request) {
+    
+    var value = request.headers['x-forwarded-for'];
+    
+    if (value != null) {
+        return value + ", " + request.socket.remoteAddress;
+    } else {
+        return request.socket.remoteAddress;
     }
 }

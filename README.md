@@ -57,7 +57,6 @@ TODO
 
  * better Redis failure handling
  * check for null keys from key generate function
- * support setting the proxied request remote address to the same as the originating remote address (avoids need for <code>X-Forwarded-For</code> header)
  * HTTPS support
  * ensure race condition goes away between TTL expiry check and reset (upstream server can get stampeded)
    * optimistic locking in Redis (requires Redis 2.1.0)
