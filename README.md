@@ -63,6 +63,7 @@ TODO
 Acknowledgements
 ---
 
+ * [node_redis](http://github.com/mranney/node_redis) (Redis library)
  * [nodejs-proxy](https://github.com/pkrumins/nodejs-proxy) (short and simple basis for the core proxy code, configuration example)
  * [HTTP client connection error handling](http://rentzsch.tumblr.com/post/664884799/node-js-handling-refused-http-client-connections)
 
@@ -71,7 +72,7 @@ Implementation Notes
 
 Due to the way Redis <2.1.3 [treats volatile keys](http://code.google.com/p/redis/wiki/ExpireCommand), several steps are needed when dealing with the rate limiting. Here is a rundown of the steps that are taken against Redis <2.1.3 to achieve incrementing volatile keys. This example uses <code>redis-cli</code> as an illustration tool and so you can test the semantics yourself or re-use them elsewhere.
 
-    $ redis-cli
+	$ redis-cli
 
 The first step is to use two keys, X and Y representing X requests in Y seconds. In this example, we'll use 60 seconds as the rate period and 10 as the maximum number of requests allowed in those 60 seconds. Because of the Redis limitation on volatile keys, the key prefixed with "Y:" will actually be the timing/expiration key only and not used to store the number of accesses in this timeframe. So for this key, the value is actually irrelevant since it will never be read or changed. The key prefixed with "X:" will keep track of the number of requests in the time period. We'll assume neither is yet set and get both values from Redis. This is best done in a transaction so we can send just one request to Redis and have guarantees about consistency between the two values.
 
@@ -87,7 +88,7 @@ The first step is to use two keys, X and Y representing X requests in Y seconds.
 
 Since we've never set either of these keys, it's no wonder that they are both -1. The next step is to of course start incrementing the X counter and set the Y key to start counting down.
 
-    redis> MULTI
+	redis> MULTI
 	OK
 	redis> SET X:foo 1
 	QUEUED
