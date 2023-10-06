@@ -66,8 +66,3 @@ Acknowledgements
  * [node_redis](http://github.com/mranney/node_redis) (Redis library)
  * [nodejs-proxy](https://github.com/pkrumins/nodejs-proxy) (short and simple basis for the core proxy code, configuration example)
  * [HTTP client connection error handling](http://rentzsch.tumblr.com/post/664884799/node-js-handling-refused-http-client-connections)
-
-Implementation Notes
----
-
-There's some notes on working with node.js and Redis on [my blog post](http://www.joshdevins.net/2010/11/22/rate-limiting-http-proxy-in-node-js-and-redis) about this weekend project.
